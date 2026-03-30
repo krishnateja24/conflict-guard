@@ -15,6 +15,7 @@ function getConfiguration(): {
 	fetchIntervalMinutes: number;
 	autoScan: boolean;
 	enableDecorations: boolean;
+	githubApiUrl: string;
 } {
 	const config = vscode.workspace.getConfiguration('conflictGuard');
 	return {
@@ -24,6 +25,7 @@ function getConfiguration(): {
 		fetchIntervalMinutes: config.get<number>('fetchIntervalMinutes', 5),
 		autoScan: config.get<boolean>('autoScan', true),
 		enableDecorations: config.get<boolean>('enableDecorations', true),
+		githubApiUrl: config.get<string>('githubApiUrl', 'https://api.github.com'),
 	};
 }
 
@@ -250,6 +252,7 @@ export class AnalysisController implements vscode.Disposable {
 				remoteName: configuration.remoteName,
 				branchName: configuration.branchName,
 				fetchBeforeScan: options.fetchBeforeScan,
+				githubApiUrl: configuration.githubApiUrl,
 			});
 
 			if (this.documentVersions.get(requestKey) !== version) {

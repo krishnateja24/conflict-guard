@@ -19,6 +19,7 @@ export interface ConflictAnalysisOptions {
 	readonly remoteName: string;
 	readonly branchName: string;
 	readonly fetchBeforeScan: boolean;
+	readonly githubApiUrl: string;
 }
 
 export class ConflictAnalysisService {
@@ -56,7 +57,7 @@ export class ConflictAnalysisService {
 			remoteMetadata.repository
 		) {
 			// Use GitHub API: no local fetch required — merge base is computed server-side
-			apiClient = new GitHubApiClient(token);
+			apiClient = new GitHubApiClient(token, options.githubApiUrl);
 			const headSha = await this.gitCli.getHeadSha(repoRoot);
 			const compareResult = await apiClient.compareRefs(
 				remoteMetadata.owner,

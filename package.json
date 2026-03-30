@@ -52,6 +52,16 @@
         "command": "conflict-guard.signOutGitHub",
         "title": "Sign out of GitHub",
         "category": "Conflict Guard"
+      },
+      {
+        "command": "conflict-guard.setPersonalAccessToken",
+        "title": "Set GitHub Personal Access Token",
+        "category": "Conflict Guard"
+      },
+      {
+        "command": "conflict-guard.clearPersonalAccessToken",
+        "title": "Clear GitHub Personal Access Token",
+        "category": "Conflict Guard"
       }
     ],
     "configuration": {
@@ -88,6 +98,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show editor decorations for lines with elevated conflict risk."
+        },
+        "conflictGuard.githubApiUrl": {
+          "type": "string",
+          "default": "https://api.github.com",
+          "markdownDescription": "GitHub API base URL. Change to your GitHub Enterprise Server API endpoint (e.g. `https://github.example.com/api/v3`) for GHE support."
         }
       }
     }

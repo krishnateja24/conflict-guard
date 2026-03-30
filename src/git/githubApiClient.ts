@@ -33,7 +33,20 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10 MB — prevents unbounded mem
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export class GitHubApiClient {
-	public constructor(private readonly token: string) {}
+	private readonly hostname: string;
+	private readonly port: number;
+	private readonly basePath: string;
+
+	public constructor(private readonly token: string, apiBaseUrl = 'https://api.github.com') {
+		try {
+			const parsed = new URL(apiBaseUrl);
+			this.hostname = parsed.hostname;
+			this.port = parsed.port ? Number.parseInt(parsed.port, 10) : 443;
+			this.basePath = parsed.pathname.replace(/\/$/u, '');
+		} catch {
+			throw new Error(`conflictGuard.githubApiUrl is not a valid URL: "${apiBaseUrl}"`);
+		}
+	}
 
 	/**
 	 * Returns open pull requests associated with the given commit SHA.
@@ -75,12 +88,13 @@ export class GitHubApiClient {
 		};
 	}
 
-	private request<T>(path: string): Promise<T> {
+	private request<T>(apiPath: string): Promise<T> {
 		return new Promise((resolve, reject) => {
 			const req = https.get(
 				{
-					hostname: 'api.github.com',
-					path,
+					hostname: this.hostname,
+					port: this.port,
+					path: this.basePath + apiPath,
 					headers: {
 						'Accept': 'application/vnd.github+json',
 						'Authorization': `Bearer ${this.token}`,

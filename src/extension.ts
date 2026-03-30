@@ -8,7 +8,7 @@ import { AnalysisController } from './ui/analysisController';
 
 export function activate(context: vscode.ExtensionContext) {
 	const outputChannel = vscode.window.createOutputChannel('Conflict Guard');
-	const authService = new GitHubAuthService();
+	const authService = new GitHubAuthService(context);
 	const analysisService = new ConflictAnalysisService(
 		new GitCli(),
 		() => authService.getToken(false),
@@ -60,6 +60,26 @@ export function activate(context: vscode.ExtensionContext) {
 		);
 	});
 
+	const setPat = vscode.commands.registerCommand('conflict-guard.setPersonalAccessToken', async () => {
+		const token = await vscode.window.showInputBox({
+			title: 'Conflict Guard: Set GitHub Personal Access Token',
+			prompt: 'Paste a fine-grained PAT with "Contents: Read-only" permission. It will be stored securely in the OS credential store.',
+			password: true,
+			validateInput: v => v.trim().length === 0 ? 'Token cannot be empty.' : undefined,
+		});
+		if (!token) {
+			return;
+		}
+		await authService.storePersonalAccessToken(token.trim());
+		void vscode.window.showInformationMessage('Conflict Guard: Personal access token saved. GitHub API calls will now use it.');
+		void analysisController.scanActiveEditor(false);
+	});
+
+	const clearPat = vscode.commands.registerCommand('conflict-guard.clearPersonalAccessToken', async () => {
+		await authService.clearPersonalAccessToken();
+		void vscode.window.showInformationMessage('Conflict Guard: Personal access token cleared.');
+	});
+
 	context.subscriptions.push(
 		outputChannel,
 		analysisController,
@@ -67,6 +87,8 @@ export function activate(context: vscode.ExtensionContext) {
 		refreshAnalysis,
 		signInGitHub,
 		signOutGitHub,
+		setPat,
+		clearPat,
 	);
 }
 

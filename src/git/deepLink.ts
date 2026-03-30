@@ -8,7 +8,7 @@ export function buildCommitUrl(metadata: RemoteRepositoryMetadata, commitHash: s
 
 	switch (provider) {
 		case 'github':
-			return `https://github.com/${owner}/${repository}/commit/${commitHash}`;
+			return `${normalizedUrl}/commit/${commitHash}`;
 		case 'gitlab':
 			return `${normalizedUrl}/-/commit/${commitHash}`;
 		case 'bitbucket':
@@ -30,7 +30,7 @@ export function buildFileAtCommitUrl(
 
 	switch (provider) {
 		case 'github':
-			return `https://github.com/${owner}/${repository}/blob/${commitHash}/${relativeFilePath}`;
+			return `${normalizedUrl}/blob/${commitHash}/${relativeFilePath}`;
 		case 'gitlab':
 			return `${normalizedUrl}/-/blob/${commitHash}/${relativeFilePath}`;
 		default:
