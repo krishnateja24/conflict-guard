@@ -1,0 +1,119 @@
+{
+  "name": "conflict-guard",
+  "displayName": "Conflict Guard",
+  "description": "Proactive Git conflict prediction for upstream branch changes",
+  "publisher": "personal",
+  "license": "Apache-2.0",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "keywords": [
+    "git",
+    "merge-conflict",
+    "conflict-detection",
+    "developer-productivity",
+    "source-control"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "conflict-guard.scanCurrentFile",
+        "title": "Scan Current File for Conflict Risk",
+        "category": "Conflict Guard"
+      },
+      {
+        "command": "conflict-guard.refreshAnalysis",
+        "title": "Refresh Conflict Analysis",
+        "category": "Conflict Guard"
+      },
+      {
+        "command": "conflict-guard.signInGitHub",
+        "title": "Sign in to GitHub",
+        "category": "Conflict Guard"
+      },
+      {
+        "command": "conflict-guard.signOutGitHub",
+        "title": "Sign out of GitHub",
+        "category": "Conflict Guard"
+      }
+    ],
+    "configuration": {
+      "title": "Conflict Guard",
+      "properties": {
+        "conflictGuard.defaultBaseBranch": {
+          "type": "string",
+          "default": "master",
+          "description": "Default upstream branch to compare against when predicting merge conflicts."
+        },
+        "conflictGuard.defaultRemote": {
+          "type": "string",
+          "default": "origin",
+          "description": "Remote name used to resolve the upstream branch reference."
+        },
+        "conflictGuard.fetchIntervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "How often Conflict Guard should refresh upstream branch metadata."
+        },
+        "conflictGuard.autoScan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Continuously analyze visible editors and refresh conflict risk in the background."
+        },
+        "conflictGuard.fetchBeforeScan": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fetch the configured remote branch before running a manual conflict scan."
+        },
+        "conflictGuard.enableDecorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show editor decorations for lines with elevated conflict risk."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "package:vsix": "vsce package --allow-missing-repository",
+    "verify": "npm test && npm run package:vsix"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.110.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "overrides": {
+    "serialize-javascript": ">=7.0.5"
+  }
+}
