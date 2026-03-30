@@ -213,7 +213,6 @@ export class AnalysisController implements vscode.Disposable {
 
 		const timer = setTimeout(() => {
 			this.changeDebounceTimers.delete(key);
-			this.outputChannel.appendLine(`[auto] scanning ${key.split('/').pop() ?? key}`);
 			for (const editor of vscode.window.visibleTextEditors) {
 				if (editor.document.uri.toString() === key) {
 					void this.scanEditor(editor, {

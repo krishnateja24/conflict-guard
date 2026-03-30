@@ -2,9 +2,17 @@
   "name": "conflict-guard",
   "displayName": "Conflict Guard",
   "description": "Proactive Git conflict prediction for upstream branch changes",
-  "publisher": "personal",
+  "publisher": "krishnateja24",
   "license": "Apache-2.0",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krishnateja24/conflict-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/krishnateja24/conflict-guard/issues"
+  },
+  "homepage": "https://github.com/krishnateja24/conflict-guard#readme",
   "engines": {
     "vscode": "^1.110.0"
   },
