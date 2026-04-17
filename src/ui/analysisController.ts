@@ -1,5 +1,6 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ConflictAnalysisService } from '../git/conflictAnalysisService';
+import { ConflictAnalysisService, matchesGlob } from '../git/conflictAnalysisService';
 import type { ConflictAnalysisResult, OverlapMatch } from '../git/types';
 
 interface ScanRequestOptions {
@@ -19,6 +20,7 @@ function getConfiguration(resourceUri?: vscode.Uri): {
 	enableDecorations: boolean;
 	githubApiUrl: string;
 	branchMappings: Record<string, string>;
+	ignoredFiles: string[];
 } {
 	const config = vscode.workspace.getConfiguration('conflictGuard', resourceUri);
 	return {
@@ -30,7 +32,29 @@ function getConfiguration(resourceUri?: vscode.Uri): {
 		enableDecorations: config.get<boolean>('enableDecorations', true),
 		githubApiUrl: config.get<string>('githubApiUrl', 'https://api.github.com'),
 		branchMappings: config.get<Record<string, string>>('branchMappings', {}),
+		ignoredFiles: config.get<string[]>('ignoredFiles', []),
 	};
+}
+
+/** Virtual document content provider for showing file contents at a git ref. */
+class ConflictRefContentProvider implements vscode.TextDocumentContentProvider {
+	// key = `${ref}::${relativeFilePath}`
+	private readonly contents = new Map<string, string>();
+
+	set(ref: string, relativeFilePath: string, content: string): vscode.Uri {
+		const key = `${ref}::${relativeFilePath}`;
+		this.contents.set(key, content);
+		const filename = relativeFilePath.split('/').at(-1) ?? 'file';
+		const encoded = Buffer.from(key).toString('base64url');
+		return vscode.Uri.parse(`conflict-guard-ref:///${encoded}/${filename}`);
+	}
+
+	provideTextDocumentContent(uri: vscode.Uri): string {
+		const segment = uri.path.split('/').filter(Boolean)[0];
+		if (!segment) { return ''; }
+		const key = Buffer.from(segment, 'base64url').toString('utf8');
+		return this.contents.get(key) ?? '';
+	}
 }
 
 function createDocumentRange(document: vscode.TextDocument, overlap: OverlapMatch): vscode.Range {
@@ -90,6 +114,8 @@ export class AnalysisController implements vscode.Disposable {
 	private readonly changeDebounceTimers = new Map<string, NodeJS.Timeout>();
 	private readonly documentVersions = new Map<string, number>();
 	private readonly overlapSignatures = new Map<string, string>();
+	private readonly lastResults = new Map<string, ConflictAnalysisResult>();
+	private readonly contentProvider = new ConflictRefContentProvider();
 	private refreshTimer: NodeJS.Timeout | undefined;
 
 	public constructor(
@@ -107,6 +133,10 @@ export class AnalysisController implements vscode.Disposable {
 			this.diagnostics,
 			this.decorationType,
 			this.statusBarItem,
+			vscode.workspace.registerTextDocumentContentProvider('conflict-guard-ref', this.contentProvider),
+			vscode.languages.registerCodeActionsProvider('*', this.createCodeActionsProvider(), {
+				providedCodeActionKinds: [vscode.CodeActionKind.Empty],
+			}),
 			vscode.window.onDidChangeActiveTextEditor(editor => {
 				if (!editor) {
 					this.statusBarItem.hide();
@@ -251,6 +281,16 @@ export class AnalysisController implements vscode.Disposable {
 		this.documentVersions.set(requestKey, version);
 
 		const configuration = getConfiguration(editor.document.uri);
+
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+		const relativePath = workspaceFolder
+			? path.relative(workspaceFolder.uri.fsPath, editor.document.uri.fsPath).split(path.sep).join('/')
+			: editor.document.uri.fsPath;
+		if (configuration.ignoredFiles.some(pat => pat === relativePath || matchesGlob(pat, relativePath))) {
+			this.clearEditorState(editor);
+			return;
+		}
+
 		try {
 			const result = await this.analysisService.analyzeFile({
 				filePath: editor.document.uri.fsPath,
@@ -291,6 +331,7 @@ export class AnalysisController implements vscode.Disposable {
 		enableDecorations: boolean,
 	): void {
 		const documentKey = editor.document.uri.toString();
+		this.lastResults.set(documentKey, result);
 		const previousOverlapSignature = this.overlapSignatures.get(documentKey) ?? '';
 		const overlapEntries = result.overlaps.map(overlap => ({
 			overlap,
@@ -481,8 +522,99 @@ export class AnalysisController implements vscode.Disposable {
 		return md;
 	}
 
+	public async viewUpstreamDiff(documentUri: vscode.Uri): Promise<void> {
+		const result = this.lastResults.get(documentUri.toString());
+		if (!result) {
+			void vscode.window.showWarningMessage('Conflict Guard: no analysis data available. Run a scan first.');
+			return;
+		}
+
+		try {
+			const [mergeBaseContent, upstreamContent] = await Promise.all([
+				this.analysisService.getFileAtRef(result.repoRoot, result.mergeBase, result.filePathRelativeToRepo),
+				this.analysisService.getFileAtRef(result.repoRoot, result.baseRef, result.filePathRelativeToRepo),
+			]);
+
+			const mergeBaseUri = this.contentProvider.set(result.mergeBase, result.filePathRelativeToRepo, mergeBaseContent);
+			const upstreamUri = this.contentProvider.set(result.baseRef, result.filePathRelativeToRepo, upstreamContent);
+			const filename = result.filePathRelativeToRepo.split('/').at(-1) ?? 'file';
+			const shortBase = result.mergeBase.slice(0, 7);
+
+			await vscode.commands.executeCommand(
+				'vscode.diff',
+				mergeBaseUri,
+				upstreamUri,
+				`Upstream changes: ${filename} (${shortBase} \u2194 ${result.baseRef})`,
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to load upstream diff.';
+			void vscode.window.showErrorMessage(`Conflict Guard: ${message}`);
+		}
+	}
+
+	public async ignoreFile(documentUri: vscode.Uri): Promise<void> {
+		const config = vscode.workspace.getConfiguration('conflictGuard', documentUri);
+		const ignored = config.get<string[]>('ignoredFiles', []);
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+		const relativePath = workspaceFolder
+			? path.relative(workspaceFolder.uri.fsPath, documentUri.fsPath).split(path.sep).join('/')
+			: documentUri.fsPath;
+
+		if (!ignored.includes(relativePath)) {
+			await config.update('ignoredFiles', [...ignored, relativePath], vscode.ConfigurationTarget.Workspace);
+		}
+
+		for (const editor of vscode.window.visibleTextEditors) {
+			if (editor.document.uri.toString() === documentUri.toString()) {
+				this.clearEditorState(editor);
+			}
+		}
+
+		void vscode.window.showInformationMessage(
+			`Conflict Guard: warnings ignored for ${path.basename(documentUri.fsPath)}. To re-enable, remove it from \`conflictGuard.ignoredFiles\` in settings.`,
+		);
+	}
+
+	private createCodeActionsProvider(): vscode.CodeActionProvider {
+		return {
+			provideCodeActions: (document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] => {
+				const result = this.lastResults.get(document.uri.toString());
+				if (!result || result.overlaps.length === 0) {
+					return [];
+				}
+
+				const inOverlap = result.overlaps.some(overlap => {
+					const r = createDocumentRange(document, overlap);
+					return r.intersection(range) !== undefined;
+				});
+
+				if (!inOverlap) {
+					return [];
+				}
+
+				const viewAction = new vscode.CodeAction('View upstream changes', vscode.CodeActionKind.Empty);
+				viewAction.command = {
+					command: 'conflict-guard.viewUpstreamDiff',
+					title: 'View upstream changes',
+					arguments: [document.uri],
+				};
+
+				const ignoreAction = new vscode.CodeAction('Ignore conflict warnings for this file', vscode.CodeActionKind.Empty);
+				ignoreAction.command = {
+					command: 'conflict-guard.ignoreFile',
+					title: 'Ignore conflict warnings for this file',
+					arguments: [document.uri],
+				};
+
+				return [viewAction, ignoreAction];
+			},
+		};
+	}
+
 	private clearEditorState(editor: vscode.TextEditor): void {
-		this.overlapSignatures.delete(editor.document.uri.toString());
+		const key = editor.document.uri.toString();
+		this.overlapSignatures.delete(key);
+		this.lastResults.delete(key);
 		this.diagnostics.delete(editor.document.uri);
 		editor.setDecorations(this.decorationType, []);
 		if (vscode.window.activeTextEditor?.document.uri.toString() === editor.document.uri.toString()) {

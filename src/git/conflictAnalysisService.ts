@@ -45,10 +45,10 @@ interface UpstreamCache {
 }
 
 /**
- * Matches a branch name against a glob pattern that supports `*` (any chars
+ * Matches a string against a glob pattern that supports `*` (any chars
  * except `/`) and `**` (any chars including `/`).
  */
-function matchesGlob(pattern: string, value: string): boolean {
+export function matchesGlob(pattern: string, value: string): boolean {
 	const regexSource = pattern
 		.split('**')
 		.map(seg => seg.split('*').map(s => s.replace(/[.+^${}()|[\]\\]/gu, '\\$&')).join('[^/]*'))
@@ -322,6 +322,11 @@ export class ConflictAnalysisService {
 			fileAtCommitUrl: upstream.fileAtCommitUrl,
 			fetched: options.fetchBeforeScan,
 		};
+	}
+
+	/** Fetches raw file content at the given git ref for display in a diff editor. */
+	public async getFileAtRef(repoRoot: string, ref: string, relativeFilePath: string): Promise<string> {
+		return this.gitCli.getFileContentAtRef(repoRoot, ref, relativeFilePath);
 	}
 
 	private async resolveBranchFromMapping(

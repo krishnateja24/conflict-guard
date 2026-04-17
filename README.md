@@ -13,6 +13,7 @@ No merge required. No manual commands. Just open a file and start coding.
 - **GitHub API mode** — when signed in, the merge base is computed server-side; no `git fetch` ever needed
 - **Upstream diff caching** — the expensive upstream fetch is cached per file and HEAD SHA; only the cheap local diff runs on each keystroke
 - **Line-level diagnostics and decorations** — risky lines appear in the Problems panel and as full-line orange highlights in the editor
+- **Code actions on conflict lines** — a lightbulb appears on any highlighted line with two quick actions: **View upstream changes** (opens a split diff editor showing what changed upstream) and **Ignore conflict warnings for this file**
 - **Status bar indicator** — shows live conflict count for the active file
 - **Upstream commit context** — hover cards show the conflicting commit's author, date, subject, commit URL, and associated PR link
 - **Multi-provider support** — works with GitHub, GitLab, Bitbucket, and Azure DevOps remotes (SSH and HTTPS)
@@ -33,6 +34,8 @@ No merge required. No manual commands. Just open a file and start coding.
 |---|---|
 | `Conflict Guard: Scan Current File for Conflict Risk` | Manually scan the active file |
 | `Conflict Guard: Refresh Conflict Analysis` | Force-fetch upstream and rescan |
+| `Conflict Guard: View Upstream Changes (Diff)` | Open a diff editor showing merge base ↔ upstream changes for the active file |
+| `Conflict Guard: Ignore Conflict Warnings for This File` | Suppress warnings for the active file (adds it to `conflictGuard.ignoredFiles`) |
 | `Conflict Guard: Sign in to GitHub` | Enable GitHub API mode (no local fetch needed) |
 | `Conflict Guard: Sign out of GitHub` | Remove the active GitHub session |
 | `Conflict Guard: Set GitHub Personal Access Token` | Use a PAT instead of OAuth |
@@ -45,6 +48,7 @@ No merge required. No manual commands. Just open a file and start coding.
 | `conflictGuard.defaultBaseBranch` | `main` | Fallback upstream branch when no Git tracking branch is configured |
 | `conflictGuard.defaultRemote` | `origin` | Remote name for the upstream branch reference |
 | `conflictGuard.branchMappings` | `{}` | Map branch glob patterns to upstream branches, e.g. `{ "feature/*": "develop" }` |
+| `conflictGuard.ignoredFiles` | `[]` | File paths or glob patterns to exclude from conflict analysis |
 | `conflictGuard.fetchIntervalMinutes` | `5` | Background upstream refresh interval in minutes (1–60) |
 | `conflictGuard.autoScan` | `true` | Enable background periodic refresh |
 | `conflictGuard.fetchBeforeScan` | `false` | Run `git fetch` before each manual scan |
@@ -57,6 +61,7 @@ No merge required. No manual commands. Just open a file and start coding.
 2. **Upstream diff (cached)** — fetches the diff between the merge base and the upstream branch once per HEAD SHA; reused on subsequent keystrokes until you commit or force-refresh
 3. **Local diff (live)** — diffs your current buffer (including unsaved changes) against the merge base on every edit
 4. **Overlap detection** — cross-checks local and upstream hunk ranges against the shared ancestor; overlapping ranges are flagged as conflict risks
+5. **Code actions** — on any flagged line the lightbulb offers to open a diff editor showing merge base ↔ upstream, or to silence warnings for that file
 
 ## Requirements
 

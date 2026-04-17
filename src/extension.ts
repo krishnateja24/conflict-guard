@@ -80,6 +80,20 @@ export function activate(context: vscode.ExtensionContext) {
 		void vscode.window.showInformationMessage('Conflict Guard: Personal access token cleared.');
 	});
 
+	const viewUpstreamDiff = vscode.commands.registerCommand('conflict-guard.viewUpstreamDiff', async (uri: vscode.Uri) => {
+		const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+		if (target) {
+			await analysisController.viewUpstreamDiff(target);
+		}
+	});
+
+	const ignoreFile = vscode.commands.registerCommand('conflict-guard.ignoreFile', async (uri: vscode.Uri) => {
+		const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+		if (target) {
+			await analysisController.ignoreFile(target);
+		}
+	});
+
 	context.subscriptions.push(
 		outputChannel,
 		analysisController,
@@ -89,6 +103,8 @@ export function activate(context: vscode.ExtensionContext) {
 		signOutGitHub,
 		setPat,
 		clearPat,
+		viewUpstreamDiff,
+		ignoreFile,
 	);
 }
 

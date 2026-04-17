@@ -3,7 +3,21 @@
 All notable changes to Conflict Guard are documented in this file.
 This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2026-04-17
+## [0.2.0] - 2026-04-17
+
+### Added
+
+- **View upstream changes (diff)** — new `Conflict Guard: View Upstream Changes (Diff)` command opens a side-by-side diff editor showing the merge base version ↔ the upstream branch version of the current file, so you can see exactly what changed upstream before deciding how to resolve it.
+- **Code actions on conflict lines** — a lightbulb appears on every highlighted conflict line with two quick actions: **View upstream changes** and **Ignore conflict warnings for this file**. No need to go to the Command Palette.
+- **Ignore file** — new `Conflict Guard: Ignore Conflict Warnings for This File` command (also accessible as a code action) adds the file to `conflictGuard.ignoredFiles` in workspace settings and immediately clears all decorations and diagnostics for it.
+- **`conflictGuard.ignoredFiles` setting** — array of workspace-relative paths or glob patterns to exclude from conflict analysis entirely.
+- **`ConflictRefContentProvider`** — internal virtual document provider (`conflict-guard-ref://`) that serves file content at a specific git ref to the VS Code diff editor.
+- **`mocha` types** — added `"mocha"` to `tsconfig.json` `types` array so test files type-check cleanly without installing additional packages.
+
+### Changed
+
+- Ignored files are skipped before analysis begins, so no git processes are spawned for them.
+- `getFileAtRef` public method added to `ConflictAnalysisService` for use by the diff viewer.
 
 ### Added
 
