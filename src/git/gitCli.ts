@@ -89,6 +89,28 @@ export class GitCli {
 		return stdout.trim();
 	}
 
+	/**
+	 * Returns the tracking (upstream) remote and branch for the current HEAD,
+	 * e.g. `{ remote: 'origin', branch: 'main' }`. Returns `undefined` when no
+	 * upstream is configured or HEAD is detached.
+	 */
+	public async getTrackingBranch(repoRoot: string): Promise<{ remote: string; branch: string } | undefined> {
+		try {
+			const { stdout } = await this.runGit(['rev-parse', '--abbrev-ref', '@{upstream}'], repoRoot);
+			const tracking = stdout.trim();
+			const slashIndex = tracking.indexOf('/');
+			if (slashIndex < 0) {
+				return undefined;
+			}
+			return {
+				remote: tracking.slice(0, slashIndex),
+				branch: tracking.slice(slashIndex + 1),
+			};
+		} catch {
+			return undefined;
+		}
+	}
+
 	public async getHeadSha(repoRoot: string): Promise<string> {
 		const { stdout } = await this.runGit(['rev-parse', 'HEAD'], repoRoot);
 		return stdout.trim();

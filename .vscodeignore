@@ -1,5 +1,7 @@
 .vscode/**
 .vscode-test/**
+.github/**
+generate-icon.js
 out/**
 node_modules/**
 src/**

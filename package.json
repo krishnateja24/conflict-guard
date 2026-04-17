@@ -4,7 +4,7 @@
   "description": "Proactive Git conflict prediction for upstream branch changes",
   "publisher": "krishnateja24",
   "license": "Apache-2.0",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/krishnateja24/conflict-guard.git"
@@ -31,6 +31,7 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
+  "icon": "icon.png",
   "contributes": {
     "commands": [
       {
@@ -69,8 +70,8 @@
       "properties": {
         "conflictGuard.defaultBaseBranch": {
           "type": "string",
-          "default": "master",
-          "description": "Default upstream branch to compare against when predicting merge conflicts."
+          "default": "main",
+          "description": "Fallback upstream branch when no Git tracking branch is set and the GitHub API is unavailable."
         },
         "conflictGuard.defaultRemote": {
           "type": "string",
@@ -103,6 +104,12 @@
           "type": "string",
           "default": "https://api.github.com",
           "markdownDescription": "GitHub API base URL. Change to your GitHub Enterprise Server API endpoint (e.g. `https://github.example.com/api/v3`) for GHE support."
+        },
+        "conflictGuard.branchMappings": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": { "type": "string" },
+          "markdownDescription": "Map current branch name patterns (supports `*` and `**` globs) to upstream branch names. Applied when no Git tracking branch is configured. Example: `{ \"feature/*\": \"develop\", \"hotfix/*\": \"main\" }`."
         }
       }
     }

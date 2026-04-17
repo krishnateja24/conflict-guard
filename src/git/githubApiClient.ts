@@ -24,6 +24,10 @@ interface RawCompareResponse {
 	files?: RawCompareFile[];
 }
 
+interface RawRepoResponse {
+	default_branch: string;
+}
+
 export interface CompareResult {
 	readonly mergeBase: string;
 	readonly filePatch: string;
@@ -63,6 +67,17 @@ export class GitHubApiClient {
 			title: pr.title,
 			state: pr.state,
 		}));
+	}
+
+	/**
+	 * Returns the repository's default branch name (e.g. `"main"` or `"master"`).
+	 * Used as a fallback when no Git tracking branch is configured locally.
+	 */
+	public async getRepoDefaultBranch(owner: string, repo: string): Promise<string> {
+		const data = await this.request<RawRepoResponse>(
+			`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+		);
+		return data.default_branch;
 	}
 
 	/**

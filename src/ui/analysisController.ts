@@ -6,9 +6,11 @@ interface ScanRequestOptions {
 	readonly fetchBeforeScan: boolean;
 	readonly interactive: boolean;
 	readonly reason: string;
+	/** Bypass the upstream diff cache and fetch fresh data. Set for timer/manual scans. */
+	readonly forceUpstreamRefresh?: boolean;
 }
 
-function getConfiguration(): {
+function getConfiguration(resourceUri?: vscode.Uri): {
 	remoteName: string;
 	branchName: string;
 	fetchBeforeScan: boolean;
@@ -16,16 +18,18 @@ function getConfiguration(): {
 	autoScan: boolean;
 	enableDecorations: boolean;
 	githubApiUrl: string;
+	branchMappings: Record<string, string>;
 } {
-	const config = vscode.workspace.getConfiguration('conflictGuard');
+	const config = vscode.workspace.getConfiguration('conflictGuard', resourceUri);
 	return {
 		remoteName: config.get<string>('defaultRemote', 'origin'),
-		branchName: config.get<string>('defaultBaseBranch', 'master'),
+		branchName: config.get<string>('defaultBaseBranch', 'main'),
 		fetchBeforeScan: config.get<boolean>('fetchBeforeScan', false),
 		fetchIntervalMinutes: config.get<number>('fetchIntervalMinutes', 5),
 		autoScan: config.get<boolean>('autoScan', true),
 		enableDecorations: config.get<boolean>('enableDecorations', true),
 		githubApiUrl: config.get<string>('githubApiUrl', 'https://api.github.com'),
+		branchMappings: config.get<Record<string, string>>('branchMappings', {}),
 	};
 }
 
@@ -145,7 +149,7 @@ export class AnalysisController implements vscode.Disposable {
 			return;
 		}
 
-		const configuration = getConfiguration();
+		const configuration = getConfiguration(editor.document.uri);
 		await this.scanEditor(editor, {
 			fetchBeforeScan: configuration.fetchBeforeScan,
 			interactive,
@@ -164,6 +168,7 @@ export class AnalysisController implements vscode.Disposable {
 			fetchBeforeScan: true,
 			interactive: true,
 			reason: 'manual-refresh',
+			forceUpstreamRefresh: true,
 		});
 	}
 
@@ -198,6 +203,7 @@ export class AnalysisController implements vscode.Disposable {
 				fetchBeforeScan: true,
 				interactive: false,
 				reason: 'scheduled-refresh',
+				forceUpstreamRefresh: true,
 			});
 		}, Math.max(configuration.fetchIntervalMinutes, 1) * 60_000);
 	}
@@ -244,7 +250,7 @@ export class AnalysisController implements vscode.Disposable {
 		const version = (this.documentVersions.get(requestKey) ?? 0) + 1;
 		this.documentVersions.set(requestKey, version);
 
-		const configuration = getConfiguration();
+		const configuration = getConfiguration(editor.document.uri);
 		try {
 			const result = await this.analysisService.analyzeFile({
 				filePath: editor.document.uri.fsPath,
@@ -253,6 +259,8 @@ export class AnalysisController implements vscode.Disposable {
 				branchName: configuration.branchName,
 				fetchBeforeScan: options.fetchBeforeScan,
 				githubApiUrl: configuration.githubApiUrl,
+				branchMappings: configuration.branchMappings,
+				forceUpstreamRefresh: options.forceUpstreamRefresh ?? false,
 			});
 
 			if (this.documentVersions.get(requestKey) !== version) {
